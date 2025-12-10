@@ -74,6 +74,7 @@ Local OpenAI-compatible FastAPI endpoints powered by Ollama, wired to SQL Server
 - SQL pipeline details and docs links: [wiki/sql-ai-scripts-overview.md](wiki/sql-ai-scripts-overview.md)
 - FastAPI variants, PCA behavior, and extension tips: [wiki/python-app-overview.md](wiki/python-app-overview.md)
 - Model rationale and quality notes: [wiki/embedding-models-explained.md](wiki/embedding-models-explained.md)
+- Chunking + Bielik embedding walkthrough with logs and cost notes: [wiki/chunked-embeddings-with-bielik.md](wiki/chunked-embeddings-with-bielik.md)
 - Ollama/Hugging Face pull commands and troubleshooting: [wiki/ollama-huggingface-model.md](wiki/ollama-huggingface-model.md)
 
 ## PubMed database backup

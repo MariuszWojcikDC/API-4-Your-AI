@@ -2,22 +2,6 @@
 
 End-to-end SQL Server 2025 AI pipeline: enable external endpoints, define credentials and external models, chunk PubMed articles, embed chunks, build vector index, search by similarity, and call Azure OpenAI via REST. Scripts live in `sql/SQL AI`.
 
-## Common references
-These T-SQL features underpin the AI pipeline: they enable external REST calls, secure credentials, register AI models, and provide vector-native search primitives.
-- `sp_configure` / `RECONFIGURE`: server-level switches to allow scoped credentials and REST endpoints before external models work. Docs: https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-configure-transact-sql?view=sql-server-ver17 , https://learn.microsoft.com/en-us/sql/t-sql/language-elements/reconfigure-transact-sql?view=sql-server-ver17
-- `ALTER DATABASE SCOPED CONFIGURATION`: per-database preview toggles used when migrated DBs need AI/preview features enabled. Docs: https://learn.microsoft.com/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql
-- `CREATE MASTER KEY`: protects scoped credential secrets so HTTP headers/keys can be stored securely. Docs: https://learn.microsoft.com/sql/t-sql/statements/create-master-key-transact-sql
-- `CREATE DATABASE SCOPED CREDENTIAL`: stores endpoint headers/API keys used by external models and REST calls. Docs: https://learn.microsoft.com/sql/t-sql/statements/create-database-scoped-credential-transact-sql
-- `CREATE EXTERNAL MODEL`: registers REST-hosted AI models (Azure OpenAI, local Bielik/Ollama) for in-engine inferencing. Docs: https://learn.microsoft.com/sql/t-sql/statements/create-external-model-transact-sql
-- `AI_GENERATE_CHUNKS`: slices text into manageable pieces before embedding to respect token limits and preserve context. Docs: https://learn.microsoft.com/sql/t-sql/functions/ai-generate-chunks-transact-sql
-- `AI_GENERATE_EMBEDDINGS`: calls the registered model to produce vectors for text chunks or queries. Docs: https://learn.microsoft.com/sql/t-sql/functions/ai-generate-embeddings-transact-sql
-- `VECTOR` type: fixed-length numeric vectors used to store embeddings. Docs: https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type?view=sql-server-ver17&tabs=csharp
-- `CREATE VECTOR INDEX`: builds approximate nearest-neighbor (ANN) indexes for fast similarity search. Docs: https://learn.microsoft.com/sql/t-sql/statements/create-vector-index-transact-sql
-- `VECTOR_SEARCH`: ANN search operator to retrieve top-N similar vectors. Docs: https://learn.microsoft.com/sql/t-sql/functions/vector-search-transact-sql
-- `VECTOR_DISTANCE`: exact distance computation (brute-force) for validation or small sets. Docs: https://learn.microsoft.com/sql/t-sql/functions/vector-distance-transact-sql
-- `sp_invoke_external_rest_endpoint`: makes REST calls from T-SQL for chat/inference or utility HTTP calls. Docs: https://learn.microsoft.com/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql
-- `JSON_VALUE`: extracts fields from JSON responses returned by REST calls. Docs: https://learn.microsoft.com/sql/t-sql/functions/json-value-transact-sql
-
 ## 001_setup.sql
 Purpose: enable AI features, create encryption key, define credentials for Azure OpenAI and local Bielik, and register external embedding models.
 
@@ -254,3 +238,22 @@ Careful
 - Performance: batch embedding generation outside T-SQL for large corpora to avoid row-mode overhead and throttling.
 - Data safety: avoid rerunning DROP statements on live data without backups.
 - Monitoring: capture endpoint latency/errors; ANN index usage may impact CPU during build and warm-up.
+
+## Common references
+Key T-SQL features used across the AI pipeline.
+
+| T-SQL feature | Why it matters | Docs |
+| --- | --- | --- |
+| `sp_configure` / `RECONFIGURE` | Enables scoped credentials and external REST endpoints before external models work. | https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-configure-transact-sql?view=sql-server-ver17, https://learn.microsoft.com/en-us/sql/t-sql/language-elements/reconfigure-transact-sql?view=sql-server-ver17 |
+| `ALTER DATABASE SCOPED CONFIGURATION` | Turns on per-database preview flags when migrated DBs need AI features enabled. | https://learn.microsoft.com/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql |
+| `CREATE MASTER KEY` | Protects secrets stored in scoped credentials. | https://learn.microsoft.com/sql/t-sql/statements/create-master-key-transact-sql |
+| `CREATE DATABASE SCOPED CREDENTIAL` | Stores endpoint headers/API keys used by external models and REST calls. | https://learn.microsoft.com/sql/t-sql/statements/create-database-scoped-credential-transact-sql |
+| `CREATE EXTERNAL MODEL` | Registers REST-hosted AI models (Azure OpenAI, local Bielik/Ollama) for in-engine inferencing. | https://learn.microsoft.com/sql/t-sql/statements/create-external-model-transact-sql |
+| `AI_GENERATE_CHUNKS` | Splits text into manageable pieces before embedding to stay within token limits. | https://learn.microsoft.com/sql/t-sql/functions/ai-generate-chunks-transact-sql |
+| `AI_GENERATE_EMBEDDINGS` | Calls the registered model to produce vectors for text chunks or queries. | https://learn.microsoft.com/sql/t-sql/functions/ai-generate-embeddings-transact-sql |
+| `VECTOR` type | Fixed-length numeric vectors used to store embeddings. | https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type?view=sql-server-ver17&tabs=csharp |
+| `CREATE VECTOR INDEX` | Builds ANN indexes for fast similarity search. | https://learn.microsoft.com/sql/t-sql/statements/create-vector-index-transact-sql |
+| `VECTOR_SEARCH` | ANN search operator to retrieve top-N similar vectors. | https://learn.microsoft.com/sql/t-sql/functions/vector-search-transact-sql |
+| `VECTOR_DISTANCE` | Exact distance computation for validation or small sets. | https://learn.microsoft.com/sql/t-sql/functions/vector-distance-transact-sql |
+| `sp_invoke_external_rest_endpoint` | Makes REST calls from T-SQL for chat/inference or utility HTTP calls. | https://learn.microsoft.com/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql |
+| `JSON_VALUE` | Extracts fields from JSON responses returned by REST calls. | https://learn.microsoft.com/sql/t-sql/functions/json-value-transact-sql |
