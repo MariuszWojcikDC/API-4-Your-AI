@@ -75,3 +75,8 @@ Local OpenAI-compatible FastAPI endpoints powered by Ollama, wired to SQL Server
 - FastAPI variants, PCA behavior, and extension tips: [wiki/python-app-overview.md](wiki/python-app-overview.md)
 - Model rationale and quality notes: [wiki/embedding-models-explained.md](wiki/embedding-models-explained.md)
 - Ollama/Hugging Face pull commands and troubleshooting: [wiki/ollama-huggingface-model.md](wiki/ollama-huggingface-model.md)
+
+## PubMed database backup
+
+A backup for the PubMed database is available at [`database/pubmed_backup.txt`](database/pubmed_backup.txt), which contains the public download link (OneDrive) for the full `.bak` file. Download it from that link or directly [here](https://drive.google.com/file/d/1QzYsYoSeJbKXKKSu7nWWZ_rV-Zvjp9NU/view?usp=sharing), then restore the database in SQL Server 2025. The backup already includes embeddings: `dbo.pubmed_article_chunk_vector_2` for `text-embedding-3-small` and `dbo.pubmed_article_chunk_vector` for Bielik.
+
