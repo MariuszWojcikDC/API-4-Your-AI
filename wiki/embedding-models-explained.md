@@ -1,57 +1,64 @@
-# Why Two Models Are Used
+# 🔍 Why Two Models Are Used
 
-This repository demonstrates how to generate embeddings and perform semantic search with two very different language models:
+This repository demonstrates how to generate embeddings and perform semantic search using two very different language models - each chosen to highlight a specific purpose in the workflow.
 
-- **OpenAI text-embedding-3-small** — a dedicated embedding model.
-- **Bielik-4.5B-v3.0-Instruct**, quantized GGUF version **Q8_0** from HuggingFace: https://hf.co/speakleash/Bielik-4.5B-v3.0-Instruct-GGUF.
+- **OpenAI `text-embedding-3-small`** - a dedicated embedding model optimized for semantic tasks.  
+- **Bielik-4.5B-v3.0-Instruct (GGUF Q8_0)** - a local, quantized Polish generative model from HuggingFace:  
+  https://hf.co/speakleash/Bielik-4.5B-v3.0-Instruct-GGUF
 
-The pairing is intentional and serves an educational, comparative purpose. It shows both the correct use of a specialized embedding model and the practical limits of using a generative LLM for embeddings.
+The pairing is intentional to show both the *correct* usage of a specialized embedding model and the *limitations* of relying on a generative LLM for embedding tasks.
 
-## text-embedding-3-small — proper semantic search embeddings
+---
 
-`text-embedding-3-small` is trained specifically for semantic search, ranking, clustering, classification, RAG, and multilingual workloads (including Polish).
+## 🧠 text-embedding-3-small - Proper Semantic Search Embeddings
 
-**Advantages**
+`text-embedding-3-small` is trained specifically for semantic search, ranking, clustering, classification, RAG, and multilingual use cases (including Polish).
 
-- High-quality, contrastively trained embeddings in a normalized vector space (great for cosine similarity).
-- Strong performance on European languages, often outperforming open-source models.
-- Lightweight, inexpensive, and fast for production use.
-- Stable results regardless of input length.
+### ✅ Advantages
+- High-quality, contrastively trained embeddings in a normalized vector space (ideal for cosine similarity).
+- Strong performance on European languages.
+- Lightweight, fast, and inexpensive for production.
+- Stable embedding behavior regardless of input length.
 
-**Limitations**
+### ⚠️ Limitations
+- Requires the OpenAI API - cannot run offline.
+- For specialized domains, the larger variant may perform better.
 
-- Requires the OpenAI API; cannot run fully offline.
-- For niche domains, the large variant may deliver higher accuracy.
+---
 
-## Bielik-4.5B-v3.0-Instruct (GGUF Q8_0) — intentionally non-embedding
+## 🏗️ Bielik-4.5B-v3.0-Instruct (GGUF Q8_0) - *Intentionally* Not an Embedding Model
 
-`Bielik-4.5B-v3.0-Instruct-GGUF:Q8_0` is a quantized, instruction-tuned, decoder-only Polish LLM meant for text generation and instruction following, not embeddings. It is included to prove a point:
+`Bielik-4.5B-v3.0-Instruct-GGUF:Q8_0` is a quantized, instruction-tuned, decoder-only Polish LLM intended for **generation**, not embeddings.
 
-> You can extract embeddings from almost any LLM, but that does not mean they will be good for semantic search.
+It is included to illustrate an important principle:
 
-In this repo, Bielik is used to:
+> You *can* extract embeddings from almost any LLM -> but that does **not** mean they will be good for semantic search.
 
-- Run a local GGUF model from HuggingFace with no external API calls.
-- Demonstrate integration with SQL Server in an end-to-end pipeline.
-- Contrast embeddings from a generative model against a dedicated embedding model.
+In this repository, Bielik is used to:
+- Run a fully local GGUF model without external APIs.
+- Demonstrate an end‑to‑end SQL Server integration with a self-hosted LLM.
+- Contrast embeddings from a generative model vs. a dedicated embedding model.
 
-**Advantages in this demo**
+### 👍 Advantages in this demo
+- 100% local execution.
+- Great for demonstrating the pipeline (local model → API → SQL Server).
+- Provides a strong counterexample to proper embedding models.
 
-- Fully local execution.
-- Helpful for showing the pipeline (local model → API → SQL Server).
-- Provides a clear counterpoint to a proper embedding model.
+### ⚠️ Limitations as an embedding model
+- No contrastive training → weak semantic similarity.
+- Vectors are not normalized or semantically structured.
+- Cosine similarity does not correlate well with meaning.
+- Poor accuracy for semantic search.
+- Embeddings are unstable and sensitive to prompt variations.
 
-**Limitations as an embedding model**
+---
 
-- No contrastive training, so semantic similarity is weak.
-- Vectors are not normalized or arranged semantically.
-- Cosine similarity does not reflect true meaning.
-- Accuracy is low for semantic search tasks.
-- Embeddings are unstable and sensitive to prompt phrasing and context.
+## 📘 Summary Comparison
 
-## Summary
+| Model                                     | Intended Use     | Embedding Quality | Purpose in This Project                                              |
+| ----------------------------------------- | ---------------- | ----------------- | -------------------------------------------------------------------- |
+| **text-embedding-3-small**                | Embedding model  | ⭐ High           | Demonstrates proper semantic search implementation                   |
+| **Bielik-4.5B-v3.0-Instruct (GGUF Q8_0)** | Generative LLM   | ❌ Very low       | Shows offline execution and SQL Server integration for comparison    |
 
-| Model                                     | Intended use    | Embedding quality | Purpose in this project                                      |
-| ----------------------------------------- | --------------- | ----------------- | ------------------------------------------------------------ |
-| text-embedding-3-small                    | Embedding model | High              | Proper semantic search implementation                        |
-| Bielik-4.5B-v3.0-Instruct (GGUF Q8_0)     | Generative LLM  | Very low          | Demonstration of offline execution and SQL Server integration |
+---
+

@@ -1,11 +1,15 @@
-# SQL AI Scripts Overview
+# 🚀 SQL AI Scripts Overview
 
-End-to-end SQL Server 2025 AI pipeline: enable external endpoints, define credentials and external models, chunk PubMed articles, embed chunks, build vector index, search by similarity, and call Azure OpenAI via REST. Scripts live in `sql/SQL AI`.
+_End-to-end SQL Server 2025 AI pipeline:_  
+Enable external endpoints, define credentials and external models, chunk PubMed articles, embed chunks, build vector indexes, run similarity search, and call Azure OpenAI via REST.  
+Scripts live in **`sql/SQL AI`**.
 
-## 001_setup.sql
-Purpose: enable AI features, create encryption key, define credentials for Azure OpenAI and local Bielik, and register external embedding models.
+---
 
-Key steps and syntax
+## 🧩 001_setup.sql  
+**Purpose:** Enable AI features, create encryption key, define credentials for Azure OpenAI and local Bielik, and register external embedding models.
+
+### 🔧 Key steps and syntax
 ```sql
 USE pubmed;
 GO
@@ -65,19 +69,20 @@ FROM [dbo].[pubmed_article] AS a;
 GO
 ```
 
-Careful
-- Server-level changes require sysadmin; apply in non-prod first.
-- Replace placeholder endpoints and keys; protect secrets (Key Vault, secrets store). Do not commit real keys.
-- Master key password must be strong; back up key or risk losing access to credentials.
-- Azure/Bielik endpoint dimensions must match later table definitions (Bielik PCA 1998 dims; Azure 1536 dims).
-- Token limits: long article_text can raise HTTP 400; consider chunking before embedding.
+### ⚠️ Careful
+- Server-level changes require **sysadmin**; apply in non‑prod first.  
+- Replace placeholder endpoints/keys; protect secrets (Key Vault).  
+- Master key password must be backed up.  
+- Ensure embedding dimensions match later table definitions.  
+- Token limits may require chunking.
 
-## 002_generate_vectors.sql
-Purpose: sample embedding generation for first 10 chunks using Bielik model.
+---
 
-Key query
+## 🧮 002_generate_vectors.sql  
+**Purpose:** Sample embedding generation for first 10 chunks using Bielik model.
+
+### 🔧 Key query
 ```sql
--- Generate embeddings for the first 10 chunks with BielikLocal
 SELECT TOP (10)
        q.id,
        AI_GENERATE_EMBEDDINGS(q.text_chunk USE MODEL BielikLocal)
@@ -85,17 +90,18 @@ FROM [dbo].[pubmed_article_chunk] AS q;
 GO
 ```
 
-Careful
-- Row-by-row `AI_GENERATE_EMBEDDINGS` is slow; prefer batch/offline scripts for volume.
-- Ensure `pubmed_article_chunk_vector` column type matches Bielik dimension (1998); mismatches will fail at insert time.
-- Respect endpoint rate limits; add throttling if looping.
+### ⚠️ Careful
+- Row-by-row embedding generation is slow.  
+- Ensure column dimension matches **1998**.  
+- Rate limits may require throttling.
 
-## 003_generate_chunks.sql
-Purpose: slice articles into fixed-length chunks and create vector storage table for Bielik embeddings.
+---
 
-Key steps and syntax
+## ✂️ 003_generate_chunks.sql  
+**Purpose:** Slice articles into fixed-length chunks and create vector storage table for Bielik embeddings.
+
+### 🔧 Key steps and syntax
 ```sql
--- Chunk storage table
 CREATE TABLE dbo.pubmed_article_chunk (
     id          INT IDENTITY PRIMARY KEY,
     article_id  INT,
@@ -105,7 +111,6 @@ CREATE TABLE dbo.pubmed_article_chunk (
 );
 GO
 
--- Generate chunks
 INSERT INTO pubmed_article_chunk (article_id, text_chunk, chunk_order)
 SELECT 
     a.id,
@@ -120,7 +125,6 @@ CROSS APPLY AI_GENERATE_CHUNKS(
 ) AS c;
 GO
 
--- Reset and recreate vector table for Bielik embeddings
 DROP TABLE IF EXISTS [pubmed_article_chunk_vector];
 GO
 
@@ -132,17 +136,18 @@ CREATE TABLE [pubmed_article_chunk_vector] (
 GO
 ```
 
-Careful
-- DROP is destructive; back up existing vectors before rerun.
-- Adjust `chunk_size`/`overlap` to keep text within embedding token limits and preserve context.
-- Keep `vector` length aligned with Bielik output dimension (1998). Changing model requires schema change.
+### ⚠️ Careful
+- `DROP TABLE` is destructive.  
+- Chunking strategy impacts embedding quality.  
+- Vector length must match model output.
 
-## 004_vector_search_distance.sql
-Purpose: build cosine index and run both ANN and exact similarity searches for a sample query.
+---
 
-Key steps and syntax
+## 🔍 004_vector_search_distance.sql  
+**Purpose:** Build cosine index and run ANN/exact similarity searches.
+
+### 🔧 Key steps and syntax
 ```sql
--- Cosine ANN index on Bielik vectors
 CREATE VECTOR INDEX idx_text_vector_cosine
 ON dbo.pubmed_article_chunk_vector (vector)
 WITH (METRIC = 'cosine');
@@ -150,7 +155,6 @@ GO
 ```
 
 ```sql
--- Query embeddings for Bielik and Azure models
 DECLARE @query_vector_Bielik VECTOR(1998) =
      AI_GENERATE_EMBEDDINGS('burnout syndrome' USE MODEL BielikLocal);
 
@@ -159,10 +163,9 @@ DECLARE @query_vector_Azure VECTOR(1536) =
 ```
 
 ```sql
--- ANN similarity search (Azure vectors)
 SELECT  
       v.id,
-      vs.distance,            -- cosine distance (0 = identical)
+      vs.distance,
       pac.article_id,
       pac.text_chunk
 FROM VECTOR_SEARCH (
@@ -172,38 +175,36 @@ FROM VECTOR_SEARCH (
         METRIC     = 'cosine',
         TOP_N      = 10
      ) AS vs
-JOIN dbo.pubmed_article_chunk AS pac
-      ON pac.id = v.id
+JOIN dbo.pubmed_article_chunk AS pac ON pac.id = v.id
 INNER JOIN dbo.pubmed_article ap on ap.id = pac.article_id
 ORDER BY vs.distance ASC;
 ```
 
 ```sql
--- Exact cosine distances for validation (Azure vectors)
 SELECT TOP(10)
       v.id,
       VECTOR_DISTANCE('cosine', @query_vector_Azure, v.[vector]) AS distance,
       pac.article_id,
       pac.text_chunk
 FROM dbo.pubmed_article_chunk_vector_2 AS v
-JOIN dbo.pubmed_article_chunk AS pac
-      ON pac.id = v.id
-JOIN dbo.pubmed_article AS ap 
-      ON ap.id = pac.article_id
+JOIN dbo.pubmed_article_chunk AS pac ON pac.id = v.id
+JOIN dbo.pubmed_article AS ap ON ap.id = pac.article_id
 ORDER BY VECTOR_DISTANCE('cosine', @query_vector_Azure, v.[vector]);
 GO
 ```
 
-Careful
-- Ensure table/variable dimensions match model (`_vector` = 1998, `_vector_2` = 1536). Mismatch causes errors or bad results.
-- Index build can be heavy on large tables; schedule during low-traffic windows.
-- ANN results are approximate; use `VECTOR_DISTANCE` for spot-check accuracy but expect full scans to be expensive.
-- Use consistent metric: index and queries both set to `cosine`.
+### ⚠️ Careful
+- Dimensions **must** match model.  
+- ANN index build can be resource‑intensive.  
+- ANN is approximate—validate with `VECTOR_DISTANCE`.  
+- Use consistent metric (`cosine`).
 
-## 005_invoke_rest_endpoint.sql
-Purpose: call Azure OpenAI chat completion via `sp_invoke_external_rest_endpoint` and parse the response.
+---
 
-Key steps and syntax
+## 🌐 005_invoke_rest_endpoint.sql  
+**Purpose:** Call Azure OpenAI chat completion via `sp_invoke_external_rest_endpoint`.
+
+### 🔧 Key steps and syntax
 ```sql
 DECLARE @body nvarchar(max) = N'{
   "model": "gpt-4o",
@@ -226,34 +227,37 @@ SELECT @full_response AS full_response,
        JSON_VALUE(@full_response,'$.response.status.http.code') AS http_status;
 ```
 
-Careful
-- Replace `<foundry>` with your endpoint name and use the correct deployment/model/api-version.
-- Credential must reference a scoped credential containing `{"api-key":"..."}`.
-- REST call surfaces HTTP codes inside response JSON; check `http_status` for failures and log `full_response` for diagnostics.
-- Protect payloads that may contain PII; avoid logging sensitive user prompts in production.
+### ⚠️ Careful
+- Replace `<foundry>` with valid endpoint.  
+- Credentials must contain API key.  
+- Check HTTP code for failures.  
+- Avoid logging sensitive prompts.
 
-## Running the scripts safely
-- Order: 001_setup -> 003_generate_chunks -> (optional) 002_generate_vectors -> 004_vector_search_distance -> 005_invoke_rest_endpoint.
-- Permissions: server-level configs need sysadmin; external calls need proper endpoint firewall/VNet rules.
-- Performance: batch embedding generation outside T-SQL for large corpora to avoid row-mode overhead and throttling.
-- Data safety: avoid rerunning DROP statements on live data without backups.
-- Monitoring: capture endpoint latency/errors; ANN index usage may impact CPU during build and warm-up.
+---
 
-## Common references
-Key T-SQL features used across the AI pipeline.
+## 🛡️ Running the scripts safely
+- **Order:** 001 → 003 → (optional 002) → 004 → 005  
+- Requires **sysadmin** for server configs.  
+- Batch embeddings outside SQL for large corpora.  
+- Avoid destructive operations without backups.  
+- Monitor latency/errors on external endpoints.
+
+---
+
+## 📚 Common references
 
 | T-SQL feature | Why it matters | Docs |
 | --- | --- | --- |
-| `sp_configure` / `RECONFIGURE` | Enables scoped credentials and external REST endpoints before external models work. | https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-configure-transact-sql?view=sql-server-ver17, https://learn.microsoft.com/en-us/sql/t-sql/language-elements/reconfigure-transact-sql?view=sql-server-ver17 |
-| `ALTER DATABASE SCOPED CONFIGURATION` | Turns on per-database preview flags when migrated DBs need AI features enabled. | https://learn.microsoft.com/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql |
-| `CREATE MASTER KEY` | Protects secrets stored in scoped credentials. | https://learn.microsoft.com/sql/t-sql/statements/create-master-key-transact-sql |
-| `CREATE DATABASE SCOPED CREDENTIAL` | Stores endpoint headers/API keys used by external models and REST calls. | https://learn.microsoft.com/sql/t-sql/statements/create-database-scoped-credential-transact-sql |
-| `CREATE EXTERNAL MODEL` | Registers REST-hosted AI models (Azure OpenAI, local Bielik/Ollama) for in-engine inferencing. | https://learn.microsoft.com/sql/t-sql/statements/create-external-model-transact-sql |
-| `AI_GENERATE_CHUNKS` | Splits text into manageable pieces before embedding to stay within token limits. | https://learn.microsoft.com/sql/t-sql/functions/ai-generate-chunks-transact-sql |
-| `AI_GENERATE_EMBEDDINGS` | Calls the registered model to produce vectors for text chunks or queries. | https://learn.microsoft.com/sql/t-sql/functions/ai-generate-embeddings-transact-sql |
-| `VECTOR` type | Fixed-length numeric vectors used to store embeddings. | https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type?view=sql-server-ver17&tabs=csharp |
-| `CREATE VECTOR INDEX` | Builds ANN indexes for fast similarity search. | https://learn.microsoft.com/sql/t-sql/statements/create-vector-index-transact-sql |
-| `VECTOR_SEARCH` | ANN search operator to retrieve top-N similar vectors. | https://learn.microsoft.com/sql/t-sql/functions/vector-search-transact-sql |
-| `VECTOR_DISTANCE` | Exact distance computation for validation or small sets. | https://learn.microsoft.com/sql/t-sql/functions/vector-distance-transact-sql |
-| `sp_invoke_external_rest_endpoint` | Makes REST calls from T-SQL for chat/inference or utility HTTP calls. | https://learn.microsoft.com/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql |
-| `JSON_VALUE` | Extracts fields from JSON responses returned by REST calls. | https://learn.microsoft.com/sql/t-sql/functions/json-value-transact-sql |
+| `sp_configure` / `RECONFIGURE` | Enables scoped credentials and external REST endpoints. | https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-configure-transact-sql?view=sql-server-ver17, https://learn.microsoft.com/en-us/sql/t-sql/language-elements/reconfigure-transact-sql?view=sql-server-ver17 |
+| `ALTER DATABASE SCOPED CONFIGURATION` | Enables preview flags needed by AI features. | https://learn.microsoft.com/sql/t-sql/statements/alter-database-scoped-configuration-transact-sql |
+| `CREATE MASTER KEY` | Protects secrets for credentials. | https://learn.microsoft.com/sql/t-sql/statements/create-master-key-transact-sql |
+| `CREATE DATABASE SCOPED CREDENTIAL` | Stores endpoint headers/API keys. | https://learn.microsoft.com/sql/t-sql/statements/create-database-scoped-credential-transact-sql |
+| `CREATE EXTERNAL MODEL` | Registers external REST‑hosted AI models. | https://learn.microsoft.com/sql/t-sql/statements/create-external-model-transact-sql |
+| `AI_GENERATE_CHUNKS` | Splits long text into feasible embedding chunks. | https://learn.microsoft.com/sql/t-sql/functions/ai-generate-chunks-transact-sql |
+| `AI_GENERATE_EMBEDDINGS` | Produces embeddings. | https://learn.microsoft.com/sql/t-sql/functions/ai-generate-embeddings-transact-sql |
+| `VECTOR` type | Stores embeddings as fixed-length arrays. | https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type?view=sql-server-ver17&tabs=csharp |
+| `CREATE VECTOR INDEX` | Builds ANN index. | https://learn.microsoft.com/sql/t-sql/statements/create-vector-index-transact-sql |
+| `VECTOR_SEARCH` | Performs ANN search. | https://learn.microsoft.com/sql/t-sql/functions/vector-search-transact-sql |
+| `VECTOR_DISTANCE` | Exact comparison of vectors. | https://learn.microsoft.com/sql/t-sql/functions/vector-distance-transact-sql |
+| `sp_invoke_external_rest_endpoint` | Executes REST calls from SQL. | https://learn.microsoft.com/sql/relational-databases/system-stored-procedures/sp-invoke-external-rest-endpoint-transact-sql |
+| `JSON_VALUE` | Extracts data from JSON. | https://learn.microsoft.com/sql/t-sql/functions/json-value-transact-sql |
