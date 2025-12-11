@@ -195,6 +195,7 @@ Model notes: [`wiki/embedding-models-explained.md`](wiki/embedding-models-explai
 ---
 
 ## 📚 Where To Dive Deeper
+- Architecture, costs, security guide: [`sqlserver-ai-architecture-costs-security-guide.md`](wiki/sqlserver-ai-architecture-costs-security-guide.md)  
 - TLS details: [`ssl-certificate-local-fastapi-sqlserver.md`](wiki/ssl-certificate-local-fastapi-sqlserver.md)  
 - SQL pipeline: [`sql-ai-scripts-overview.md`](wiki/sql-ai-scripts-overview.md)  
 - FastAPI/PCA notes: [`python-app-overview.md`](wiki/python-app-overview.md)  
