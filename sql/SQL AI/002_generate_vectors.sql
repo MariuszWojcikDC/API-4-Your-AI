@@ -10,8 +10,6 @@ GO
 -- better approach is to use other tolls - like script in python with batch mode enabled
 SELECT TOP (10)
        q.id,
-       AI_GENERATE_EMBEDDINGS(q.text_chunk USE MODEL BielikLocal)
+       AI_GENERATE_EMBEDDINGS(q.text_chunk USE MODEL AzureTextEmbeddingSmall)
 FROM [dbo].[pubmed_article_chunk] AS q;
 GO
-
-

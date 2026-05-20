@@ -14,53 +14,57 @@ GO
 ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES = ON;
 GO
 
+SELECT * FROM sys.external_models
+SELECT * FROM sys.database_scoped_credentials
 
---DROP EXTERNAL MODEL BielikLocalhost
---DROP DATABASE SCOPED CREDENTIAL  [https://127.0.0.1:5001]
---DROP MASTER KEY
-
-
+-- DROP EXTERNAL MODEL BielikLocal
+-- DROP DATABASE SCOPED CREDENTIAL  [http://localhost:11434/api/embed]
+-- DROP MASTER KEY
 
 -- Create the master key protecting database-scoped credentials.
-CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'MySuperSecretPassword2025!';
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'MySuperSecretPassword2026!';
 GO
 
 -- Credential for Azure OpenAI embedding endpoint.
-CREATE DATABASE SCOPED CREDENTIAL [https://<your_microsoft_foundry_name>.cognitiveservices.azure.com/]
+CREATE DATABASE SCOPED CREDENTIAL [https://<MS-FOUNDRY-ENDPOINT>.cognitiveservices.azure.com/]
     WITH IDENTITY = 'HTTPEndpointHeaders',
-         SECRET = '{"api-key":"my-azure-openai-api-key"}';
+         SECRET = '{"api-key":"XYZ"}';
 GO
 
 -- External embedding model pointing to Azure OpenAI deployment.
 CREATE EXTERNAL MODEL AzureTextEmbeddingSmall
 WITH (
-    LOCATION = 'https://<your_microsoft_foundry_name>.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15',
+    LOCATION = 'https://<MS-FOUNDRY-ENDPOINT>.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15',
     API_FORMAT = 'Azure OpenAI',
     MODEL_TYPE = EMBEDDINGS,
     MODEL = 'text-embedding-3-small',
-    CREDENTIAL = [https://<your_microsoft_foundry_name>.cognitiveservices.azure.com/]
+    CREDENTIAL = [https://<MS-FOUNDRY-ENDPOINT>.cognitiveservices.azure.com/]
 );
 GO
 
 -- Credential for the local Bielik embedding endpoint.
-CREATE DATABASE SCOPED CREDENTIAL [https://127.0.0.1:5001]
+-- This local endpoint could be set to https://127.0.0.1:5001 if you are running Bielik using provided FastAPI server
+-- Or any address on your network like https://localhost/api/embed if using caddy as a reverse proxy in front of Bielik.
+CREATE DATABASE SCOPED CREDENTIAL [https://localhost/api/embed] -- Could be different for you depending on how you set up the endpoint
     WITH IDENTITY = 'HTTPEndpointHeaders',
          SECRET = '{"api-key":"not important"}';
 GO
 
--- External embedding model pointing to the local Bielik deployment.
 CREATE EXTERNAL MODEL BielikLocal
 WITH (
-    LOCATION = 'https://127.0.0.1:5001/openai/deployments/local/embeddings',
-    API_FORMAT = 'Azure OpenAI', --Ollama also works here but has different URL for accessing embeddings. check Ollama documentation for details 
+    LOCATION = 'https://localhost/api/embed',
+    API_FORMAT = 'Ollama',
     MODEL_TYPE = EMBEDDINGS,
-    MODEL = 'local',
-    CREDENTIAL = [https://127.0.0.1:5001]
+    MODEL = 'hf.co/speakleash/Bielik-4.5B-v3.0-Instruct-GGUF:Q8_0',
+    CREDENTIAL = [https://localhost/api/embed]
 );
 GO
 
--- Quick smoke test to verify the Bielik model responds.
+-- Quick smoke test to verify if the model responds.
 SELECT AI_GENERATE_EMBEDDINGS('test' USE MODEL BielikLocal);
+GO
+
+SELECT AI_GENERATE_EMBEDDINGS('test' USE MODEL AzureTextEmbeddingSmall);
 GO
 
 -- Table naming convention:
@@ -73,3 +77,10 @@ SELECT TOP (8) a.id,
        AI_GENERATE_EMBEDDINGS(a.article_text USE MODEL AzureTextEmbeddingSmall)
 FROM [dbo].[pubmed_article] AS a;
 GO
+
+-- Quick check of the dimensions of the returned embeddings.
+SELECT COUNT(*) AS Dimensions
+FROM OPENJSON(AI_GENERATE_EMBEDDINGS('test' USE MODEL BielikLocal));
+
+SELECT COUNT(*) AS Dimensions
+FROM OPENJSON(AI_GENERATE_EMBEDDINGS('test' USE MODEL AzureTextEmbeddingSmall));

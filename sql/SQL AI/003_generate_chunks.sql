@@ -14,7 +14,7 @@ GO
 
 -- Generate text chunks for each article.
 INSERT INTO pubmed_article_chunk (article_id, text_chunk, chunk_order)
-SELECT 
+SELECT TOP 10
     a.id,
     c.chunk,
     c.chunk_order
