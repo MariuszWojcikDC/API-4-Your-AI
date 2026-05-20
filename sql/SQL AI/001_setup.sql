@@ -43,6 +43,8 @@ WITH (
 GO
 
 -- Credential for the local Bielik embedding endpoint.
+-- This local endpoint could be set to https://127.0.0.1:5001 if you are running Bielik using provided FastAPI server
+-- Or any address on your network like https://localhost/api/embed if using caddy as a reverse proxy in front of Bielik.
 CREATE DATABASE SCOPED CREDENTIAL [https://localhost/api/embed] -- Could be different for you depending on how you set up the endpoint
     WITH IDENTITY = 'HTTPEndpointHeaders',
          SECRET = '{"api-key":"not important"}';
